@@ -1,4 +1,10 @@
-const args = process.argv.slice(2);
+interface ActivityResponse {
+  id: number;
+  type: string;
+  repo: {
+    name: string;
+  };
+}
 
 const fetchUserActivity = async (username: string) => {
   const githubUrl = `https://api.github.com/users/${username}/events`;
@@ -11,21 +17,71 @@ const fetchUserActivity = async (username: string) => {
     const res = await fetch(githubUrl);
 
     if (!res.ok) {
-      throw new Error("Could not fetch user activity!");
+      throw new Error("User not found!");
     }
 
     const data = await res.json();
 
-    console.log("-------------------------------------------");
-    console.log(data);
+    return data;
   } catch (error) {
-    console.error(error);
+    throw error;
   }
 };
 
-if (args.length === 0) {
-  console.error("No username was given!");
-} else {
-  const githubUsername = args[0];
-  fetchUserActivity(githubUsername);
-}
+const reduceByType = (arr: any[]) => {
+  return arr.reduce<Record<string, ActivityResponse[]>>(
+    (acc, event: ActivityResponse) => {
+      const currentType: string = event.type;
+
+      if (!acc[currentType]) {
+        acc[currentType] = [];
+      }
+
+      acc[currentType].push(event);
+
+      return acc;
+    },
+    {}
+  );
+};
+
+const activityCLI = async () => {
+  const args = process.argv.slice(2);
+
+  if (args.length === 0) {
+    console.error("No username was given!");
+  } else {
+    const githubUsername = args[0];
+    try {
+      const gitActivity = await fetchUserActivity(githubUsername);
+      const groupedByType = reduceByType(gitActivity);
+
+      for (const type in groupedByType) {
+        const cleanType: string = type.slice(0, type.indexOf("Event"));
+        const eventCounter = groupedByType[type].length;
+
+        console.log(`- ${eventCounter} new ${cleanType} events in:`);
+
+        groupedByType[type].forEach((event) => {
+          const repoName = event.repo.name.slice(
+            type.indexOf("/"),
+            event.repo.name.length
+          );
+          console.log(`   ${repoName}`);
+        });
+
+        console.log();
+      }
+
+      // console.log("CLI", gitActivity);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Error: User not found!");
+      } else {
+        console.error("An unknown error occurred.");
+      }
+    }
+  }
+};
+
+activityCLI();
