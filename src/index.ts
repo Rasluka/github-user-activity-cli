@@ -63,17 +63,12 @@ const activityCLI = async () => {
         console.log(`- ${eventCounter} new ${cleanType} events in:`);
 
         groupedByType[type].forEach((event) => {
-          const repoName = event.repo.name.slice(
-            type.indexOf("/"),
-            event.repo.name.length
-          );
+          const repoName = event.repo.name.slice(event.repo.name.indexOf("/"));
           console.log(`   ${repoName}`);
         });
 
         console.log();
       }
-
-      // console.log("CLI", gitActivity);
     } catch (error) {
       if (error instanceof Error) {
         console.error("Error: User not found!");
